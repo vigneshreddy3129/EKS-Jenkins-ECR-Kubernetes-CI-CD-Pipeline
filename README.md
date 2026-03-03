@@ -1,18 +1,42 @@
-# EKS-Jenkins-ECR-Kubernetes-CI-CD-Pipeline
+# 🚀 CI/CD Pipeline: Jenkins + EKS + ECR + Kubernetes
 
-🚀 STEP 1 — Create EKS Cluster
-📍 Done in AWS Console
-Go to EKS → Create Cluster
-Create Node Group
-Min: 2
-Desired: 2
-Max: 4
-Cluster ready.
-🚀 STEP 2 — Launch Jenkins Server (EC2)
-📍 AWS Console → EC2 → Launch instance
-Install on Jenkins VM:
-Bash
-Copy code
+This project demonstrates a complete CI/CD pipeline using:
+
+- Amazon EKS
+- Jenkins
+- Amazon ECR
+- Docker
+- Kubernetes (HPA + Ingress)
+
+---
+
+# 📌 Architecture Flow
+
+Developer → GitHub → Jenkins → Docker Build → ECR → EKS → Kubernetes Pods
+
+---
+
+# 🚀 STEP 1 — Create EKS Cluster
+
+📍 AWS Console → EKS → Create Cluster
+
+1. Create Cluster
+2. Create Node Group  
+   - Min: 2  
+   - Desired: 2  
+   - Max: 4  
+
+Cluster ready ✅
+
+---
+
+# 🚀 STEP 2 — Launch Jenkins Server (EC2)
+
+📍 AWS Console → EC2 → Launch Instance
+
+## Install Required Packages
+
+```bash
 sudo yum update -y
 sudo yum install docker -y
 sudo systemctl start docker
@@ -21,230 +45,283 @@ sudo usermod -aG docker ec2-user
 sudo yum install java-17 -y
 sudo yum install jenkins -y
 sudo systemctl start jenkins
-Install:
-AWS CLI
-kubectl
-Connect Jenkins to EKS:
-Bash
-Copy code
+```
+
+## Install Tools
+- AWS CLI
+- kubectl
+
+## Connect Jenkins to EKS
+
+```bash
 aws configure
 aws eks update-kubeconfig --region ap-south-1 --name my-cluster
 kubectl get nodes
-If nodes appear → Jenkins can deploy.
-🚀 STEP 3 — Create ECR Repository
-📍 AWS Console → ECR → Create repo
-Example name: myapp
-Copy ECR URL:
-Copy code
+```
 
+If nodes appear → Jenkins can deploy ✅
+
+---
+
+# 🚀 STEP 3 — Create ECR Repository
+
+📍 AWS Console → ECR → Create Repository
+
+Example repository name:
+```
+myapp
+```
+
+Example ECR URL:
+```
 123456789.dkr.ecr.ap-south-1.amazonaws.com/myapp
-🚀 STEP 4 — Create Project Structure (On Your Local Machine)
-Create this structure:
-Copy code
+```
 
+---
+
+# 🚀 STEP 4 — Project Structure
+
+```
 myapp/
 ├── app.js
 ├── package.json
 ├── Dockerfile
-├── Jenkinsfile   👈 IMPORTANT
+├── Jenkinsfile
 └── k8s/
-├── deployment.yaml
-├── service.yaml
-├── ingress.yaml
-└── hpa.yaml
-Push this to GitHub.
-🚀 STEP 5 — Dockerfile
-Inside project root:
-Dockerfile
-Copy code
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── ingress.yaml
+    └── hpa.yaml
+```
+
+Push this project to GitHub.
+
+---
+
+# 🚀 STEP 5 — Dockerfile
+
+```dockerfile
 FROM node:18
 WORKDIR /app
 COPY . .
 RUN npm install
 CMD ["node", "app.js"]
-🚀 STEP 6 — Kubernetes Files (Inside k8s Folder)
-deployment.yaml
-YAML
-Copy code
+```
+
+---
+
+# 🚀 STEP 6 — Kubernetes Manifests
+
+## deployment.yaml
+
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-name: myapp
+  name: myapp
 spec:
-replicas: 2
-selector:
-matchLabels:
-app: myapp
-template:
-metadata:
-labels:
-app: myapp
-spec:
-containers:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp
+        image: IMAGE_PLACEHOLDER
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            cpu: "200m"
+          limits:
+            cpu: "500m"
+```
 
-name: myapp
-image: IMAGE_PLACEHOLDER
-ports:
+---
 
-containerPort: 3000
-resources:
-requests:
-cpu: "200m"
-limits:
-cpu: "500m"
-service.yaml
-YAML
-Copy code
+## service.yaml
+
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
-name: myapp-service
+  name: myapp-service
 spec:
-selector:
-app: myapp
-ports:
+  selector:
+    app: myapp
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP
+```
 
-port: 80
-targetPort: 3000
-type: ClusterIP
-ingress.yaml
-YAML
-Copy code
+---
+
+## ingress.yaml
+
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-name: myapp-ingress
+  name: myapp-ingress
 spec:
-rules:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: myapp-service
+            port:
+              number: 80
+```
 
+---
 
-http:
-paths:
+## hpa.yaml
 
-path: /
-pathType: Prefix
-backend:
-service:
-name: myapp-service
-port:
-number: 80
-hpa.yaml
-YAML
-Copy code
+```yaml
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-name: myapp-hpa
+  name: myapp-hpa
 spec:
-scaleTargetRef:
-apiVersion: apps/v1
-kind: Deployment
-name: myapp
-minReplicas: 2
-maxReplicas: 6
-metrics:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
 
-type: Resource
-resource:
-name: cpu
-target:
-type: Utilization
-averageUtilization: 70
-🚀 STEP 7 — Create Jenkinsfile (IMPORTANT)
-📍 This file goes in your GitHub repo root.
-Groovy
-Copy code
+---
+
+# 🚀 STEP 7 — Jenkinsfile
+
+Place this file in the project root.
+
+```groovy
 pipeline {
-agent any
+  agent any
 
-environment {
-AWS_REGION = "ap-south-1"
-ECR_URL = "123456789.dkr.ecr.ap-south-1.amazonaws.com/myapp"
-}
+  environment {
+    AWS_REGION = "ap-south-1"
+    ECR_URL = "123456789.dkr.ecr.ap-south-1.amazonaws.com/myapp"
+  }
 
-stages {
+  stages {
 
-stage('Clone') {
-steps {
-git 'https://github.com/yourrepo.git'
-}
-}
+    stage('Clone') {
+      steps {
+        git 'https://github.com/yourrepo.git'
+      }
+    }
 
-stage('Build Docker') {
-steps {
-sh 'docker build -t myapp:$BUILD_NUMBER .'
-}
-}
+    stage('Build Docker') {
+      steps {
+        sh 'docker build -t myapp:$BUILD_NUMBER .'
+      }
+    }
 
-stage('Login to ECR') {
-steps {
-sh '''
-aws ecr get-login-password --region $AWS_REGION |
-docker login --username AWS --password-stdin $ECR_URL
-'''
-}
-}
+    stage('Login to ECR') {
+      steps {
+        sh '''
+        aws ecr get-login-password --region $AWS_REGION \
+        | docker login --username AWS --password-stdin $ECR_URL
+        '''
+      }
+    }
 
-stage('Push to ECR') {
-steps {
-sh '''
-docker tag myapp:$BUILD_NUMBER $ECR_URL:$BUILD_NUMBER
-docker push $ECR_URL:$BUILD_NUMBER
-'''
-}
-}
+    stage('Push to ECR') {
+      steps {
+        sh '''
+        docker tag myapp:$BUILD_NUMBER $ECR_URL:$BUILD_NUMBER
+        docker push $ECR_URL:$BUILD_NUMBER
+        '''
+      }
+    }
 
-stage('Deploy to EKS') {
-steps {
-sh '''
-sed -i "s|IMAGE_PLACEHOLDER|$ECR_URL:$BUILD_NUMBER|g" k8s/deployment.yaml
-kubectl apply -f k8s/
-'''
-}
-}
+    stage('Deploy to EKS') {
+      steps {
+        sh '''
+        sed -i "s|IMAGE_PLACEHOLDER|$ECR_URL:$BUILD_NUMBER|g" k8s/deployment.yaml
+        kubectl apply -f k8s/
+        '''
+      }
+    }
 
+  }
 }
-}
-🚀 STEP 8 — Create Jenkins Pipeline Job
+```
+
+---
+
+# 🚀 STEP 8 — Create Jenkins Pipeline Job
+
 📍 Jenkins UI
-New Item
-Choose Pipeline
-In Pipeline section → choose:
-Copy code
 
-Pipeline script from SCM
-Select Git
-Paste GitHub repo URL
-Save
-Now Jenkins will automatically read Jenkinsfile.
-🔥 WHAT HAPPENS WHEN YOU CLICK BUILD
-1️⃣ Jenkins clones repo
-2️⃣ Builds Docker image
-3️⃣ Pushes to ECR
-4️⃣ Replaces image in deployment.yaml
-5️⃣ Applies k8s folder
-6️⃣ Kubernetes rolling update starts
-🔥 SCALING BEHAVIOR
-Traffic increases:
-CPU > 70% → HPA increases pods
-Nodes full → Cluster Autoscaler adds new VM
-Fully automatic.
-🎯 WHERE EVERYTHING RUNS
-Task
-Runs Where
-Create cluster
-AWS Console
-Write code
-Local machine
-Push to GitHub
-Local machine
-Build Docker
-Jenkins server
-Push to ECR
-Jenkins server
-kubectl apply
-Jenkins server
-Scaling
-Kubernetes
-🎤 FINAL INTERVIEW ANSWER
-“We store Dockerfile, Kubernetes manifests, and Jenkinsfile in GitHub. Jenkins pipeline builds and pushes the image to ECR, updates the Deployment, and applies Kubernetes manifests. HPA scales pods based on CPU, and Cluster Autoscaler provisions additional nodes if required.”
+1. Click **New Item**
+2. Select **Pipeline**
+3. Choose **Pipeline script from SCM**
+4. Select **Git**
+5. Paste GitHub repository URL
+6. Save
+
+Jenkins automatically reads the `Jenkinsfile`.
+
+---
+
+# 🔥 What Happens When You Click Build?
+
+1. Jenkins clones repository  
+2. Builds Docker image  
+3. Pushes image to ECR  
+4. Updates image in deployment.yaml  
+5. Applies Kubernetes manifests  
+6. Rolling update starts  
+
+---
+
+# 🔥 Scaling Behavior
+
+- CPU > 70% → HPA increases pods
+- If nodes are full → Cluster Autoscaler adds new EC2 nodes
+- Fully automatic scaling
+
+---
+
+# 🎯 Where Everything Runs
+
+| Task | Runs On |
+|------|---------|
+| Create Cluster | AWS Console |
+| Write Code | Local Machine |
+| Push to GitHub | Local Machine |
+| Docker Build | Jenkins Server |
+| Push to ECR | Jenkins Server |
+| kubectl apply | Jenkins Server |
+| Auto Scaling | Kubernetes |
+
+---
+
+# 🎤 Interview Summary
+
+We store Dockerfile, Kubernetes manifests, and Jenkinsfile in GitHub.  
+Jenkins builds the Docker image, pushes it to ECR, updates the Kubernetes deployment, and applies manifests to EKS.  
+HPA scales pods based on CPU utilization, and Cluster Autoscaler provisions additional nodes when required.
+
+---
+
+✅ End of Project Documentation
