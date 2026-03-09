@@ -37,7 +37,23 @@ Cluster ready ✅
 ## Install Required Packages
 
 ```bash
-sudo yum update -y
+sudo apt update -y
+sudo apt install docker.io -y
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ubuntu
+docker --version
+
+sudo yum install java-17 -y
+sudo yum install jenkins -y
+sudo systemctl start jenkins
+sudo yum install docker -y
+sudo systemctl start docker
+sudo usermod -aG docker ec2-user
+
+sudo yum install java-17 -y
+sudo yum install jenkins -y
+sudo systemctl start jenkins
 sudo yum install docker -y
 sudo systemctl start docker
 sudo usermod -aG docker ec2-user
