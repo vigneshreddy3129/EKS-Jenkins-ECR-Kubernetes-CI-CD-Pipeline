@@ -313,7 +313,7 @@ pipeline {
 
  stage('Clone Repo'){
  steps{
- git 'https://github.com/YOUR_REPO.git'
+ git branch: 'main', url: 'https://github.com/vigneshreddy3129/mean-devops-assignment.git'
  }
  }
 
