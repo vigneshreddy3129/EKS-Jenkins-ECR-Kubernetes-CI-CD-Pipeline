@@ -57,6 +57,8 @@ sudo systemctl start jenkins
 
 sudo systemctl status jenkins
 
+sudo usermod -aG docker jenkins
+
 
 sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 
