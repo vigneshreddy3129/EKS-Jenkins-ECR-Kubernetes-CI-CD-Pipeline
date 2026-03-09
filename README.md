@@ -64,6 +64,13 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 
 ```
 
+## Login to Docker Hub on Jenkins Server
+```
+docker login
+Username:
+Password:
+```
+
 ## Install plugins:
 -- Run inside Jenkins EC2
 - Docker
@@ -323,6 +330,11 @@ pipeline {
  sh 'docker build -t vignesh0777/mean-frontend ./frontend'
  }
  }
+ stage('Docker Login'){
+ steps{
+  sh 'docker login -u vignesh0777 -p Vignesh123'
+ }
+}
 
  stage('Push Images'){
  steps{
